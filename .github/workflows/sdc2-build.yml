@@ -42,7 +42,7 @@ jobs:
         run: |
           mkdir -p build-logs
           set -o pipefail
-          pio run -e smalltv_sdc2_compact 2>&1 | tee build-logs/firmware-build.log
+          pio run -e smalltv_sdc2_theme 2>&1 | tee build-logs/firmware-build.log
       - name: Collect build configuration and map
         id: diagnostics
         if: always()
@@ -67,7 +67,7 @@ jobs:
           name: sdc2-build-diagnostics
           path: |
             build-logs/
-            .pio/build/smalltv_sdc2_compact/*.map
-            .pio/build/smalltv_sdc2_compact/sdkconfig*
+            .pio/build/smalltv_sdc2_theme/*.map
+            .pio/build/smalltv_sdc2_theme/sdkconfig*
           if-no-files-found: warn
           include-hidden-files: true
