@@ -28,7 +28,8 @@ jobs:
       - name: Check host-side upload gates
         run: python tools/check_sdc2_port.py
       - name: Cache compact framework rebuild
-        uses: actions/cache@v6
+        id: pio-cache
+        uses: actions/cache/restore@v6
         with:
           path: ~/.platformio
           key: sdc2-compact-${{ runner.os }}-${{ hashFiles('platformio.sdc2.ini') }}
@@ -43,12 +44,22 @@ jobs:
           set -o pipefail
           pio run -e smalltv_sdc2_compact 2>&1 | tee build-logs/firmware-build.log
       - name: Collect build configuration and map
+        id: diagnostics
         if: always()
         shell: bash
         run: |
           mkdir -p build-logs
           find .pio -type f \( -name 'sdkconfig*' -o -name '*.map' \) -print > build-logs/diagnostic-files.txt 2>/dev/null || true
           printf 'This artifact contains diagnostics only; no firmware is certified for device installation.\n' > build-logs/STATUS.txt
+          if grep -q 'Starting Arduino compile' build-logs/firmware-build.log; then
+            echo 'framework_ready=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Preserve successfully rebuilt framework even if the application fails
+        if: always() && steps.diagnostics.outputs.framework_ready == 'true' && steps.pio-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.platformio
+          key: ${{ steps.pio-cache.outputs.cache-primary-key }}
       - name: Save diagnostic artifact (never publish a release)
         if: always()
         uses: actions/upload-artifact@v6
@@ -59,3 +70,4 @@ jobs:
             .pio/build/smalltv_sdc2_compact/*.map
             .pio/build/smalltv_sdc2_compact/sdkconfig*
           if-no-files-found: warn
+          include-hidden-files: true
