@@ -23,7 +23,7 @@ def manifest(layout):
                    text("humidity","Humidity {wx.hum}%",218,12,"#adb8cb")])
     return dict(spec=2,theme=dict(id="sdc2-"+layout,name="SDC2 "+layout.title(),author="smalltv-mod SDC2 port",version="1.0.0"),
         display=dict(width=240,height=240,background="#080d18"),
-        data=[dict(id="wx",url="https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&current=temperature_2m,relative_humidity_2m",interval=600,
+        data=[dict(id="wx",url="https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&current=temperature_2m,relative_humidity_2m",interval=600,insecureTls=True,
                    fields=[dict(id="temp",path="current.temperature_2m",decimals=0),dict(id="hum",path="current.relative_humidity_2m",decimals=0)])],layers=layers)
 
 def main():

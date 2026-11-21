@@ -30,6 +30,8 @@ Clock, Wi-Fi, brightness, rotation and calibration use SmallTV's own settings.
 Weather defaults to Seoul and the clock to KST. Theme colors, positions and
 weather URL are in the included editable theme sources. Rebuild these using
 SmallTV theme tooling and install through its Theme clocks interface.
+SmallTV's existing theme data client does not validate HTTPS certificates;
+the public weather source explicitly enables its required insecureTls option.
 
 Physical display, networking and recovery remain unverified on the actual unit.
 If serial auto-reset does not work, identify the board's boot/UART connections;
