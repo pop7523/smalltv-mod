@@ -527,9 +527,15 @@ void Settings::setDefaults() {
 // ---------------------------------------------------------------------------
 bool settingsBegin() {
   if (LittleFS.begin()) return true;
+#if defined(SMALLTV_SDC2)
+  // The stock filesystem may not be LittleFS. Never erase its photos/settings
+  // merely because this experimental port cannot mount it.
+  return false;
+#else
   // First boot on a fresh chip: format then mount.
   if (LittleFS.format() && LittleFS.begin()) return true;
   return false;
+#endif
 }
 
 bool loadSettings(Settings& s) {

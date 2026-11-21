@@ -30,7 +30,10 @@
 // SMALLTV_ESP32_WG are defined alongside SMALLTV_ESP32 rather than instead of
 // it, so they have to be tested first or they fall into the plain esp32 case
 // and the device self-updates itself onto the wrong image.
-#if defined(SMALLTV_ESP32C2)
+#if defined(SMALLTV_SDC2)
+  #define UPDATE_ASSET "SDC2_smalltv_UNVALIDATED.bin"
+  #define FW_VARIANT   "sdc2-experimental"
+#elif defined(SMALLTV_ESP32C2)
   #define UPDATE_ASSET "smalltv-mod-firmware-c2.bin"
   #define FW_VARIANT   "c2"
 #elif defined(SMALLTV_ESP32_PRO)
@@ -57,7 +60,9 @@
 // Provides TFT_SCLK/MOSI/DC/RST/CS/BL, TFT_BGR, TFT_BL_DEFAULT_INVERTED,
 // HAS_LDR/LDR_PIN/ADC_MAX. Both panels are 1.54" 240x240 ST7789 IPS.
 // ---------------------------------------------------------------------------
-#if defined(SMALLTV_ESP32C2)
+#if defined(SMALLTV_SDC2)
+  #include "board_sdc2.h"
+#elif defined(SMALLTV_ESP32C2)
   #include "board_esp32c2.h"
 #elif defined(SMALLTV_ESP32_PRO)
   #include "board_esp32_pro.h"

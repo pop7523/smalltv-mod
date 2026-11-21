@@ -1,0 +1,54 @@
+name: SDC2 experimental build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [sdc2-build]
+
+permissions:
+  contents: read
+
+jobs:
+  firmware:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Pin both PlatformIO cores
+        shell: bash
+        run: |
+          printf 'platformio==6.1.19\npioarduino==6.1.19\n' > "$RUNNER_TEMP/pio-constraints.txt"
+          echo "PIP_CONSTRAINT=$RUNNER_TEMP/pio-constraints.txt" >> "$GITHUB_ENV"
+          echo "UV_CONSTRAINT=$RUNNER_TEMP/pio-constraints.txt" >> "$GITHUB_ENV"
+      - name: Check host-side upload gates
+        run: python tools/check_sdc2_port.py
+      - name: Install build core
+        run: pip install platformio==6.1.19
+      - name: Compile SDC2 candidate and retain diagnostics
+        shell: bash
+        run: |
+          mkdir -p build-logs
+          set -o pipefail
+          pio run -c platformio.sdc2.ini -e smalltv_sdc2 2>&1 | tee build-logs/firmware-build.log
+      - name: Collect build configuration and map
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p build-logs
+          find .pio -type f \( -name 'sdkconfig*' -o -name '*.map' \) -print > build-logs/diagnostic-files.txt 2>/dev/null || true
+          printf 'This artifact contains diagnostics only; no firmware is certified for device installation.\n' > build-logs/STATUS.txt
+      - name: Save diagnostic artifact (never publish a release)
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: sdc2-build-diagnostics
+          path: |
+            build-logs/
+            .pio/build/smalltv_sdc2/*.map
+            .pio/build/smalltv_sdc2/sdkconfig*
+          if-no-files-found: warn
