@@ -1,0 +1,39 @@
+name: SDC2 Desk Clock
+on:
+  push:
+    branches: [desk-clock-build]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  renderer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Test actual renderer with address and undefined behavior sanitizers
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -g -Istockclock/main stockclock/tests/render.c stockclock/main/desk_config.c stockclock/main/desk_draw.c stockclock/main/gfx.c stockclock/main/fonts.c -lm -o /tmp/render
+          /tmp/render
+  firmware:
+    needs: renderer
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.1
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build for original SDC2 OTA slots
+        shell: bash
+        working-directory: stockclock
+        run: |
+          . /opt/esp/idf/export.sh
+          idf.py set-target esp32c2
+          idf.py build
+          python ../tools/inspect_sdc2_image.py build/sdc2_desk_clock.bin | tee build/image-report.json
+          cp build/sdc2_desk_clock.bin build/SDC2_DeskClock_v1.1.0-desk.1_OTA.bin
+          sha256sum build/SDC2_DeskClock_v1.1.0-desk.1_OTA.bin > build/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v6
+        with:
+          name: SDC2-DeskClock-OTA
+          path: |
+            stockclock/build/SDC2_DeskClock_v1.1.0-desk.1_OTA.bin
+            stockclock/build/SHA256SUMS.txt
+            stockclock/build/image-report.json
