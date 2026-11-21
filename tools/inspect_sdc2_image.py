@@ -10,9 +10,9 @@ from pathlib import Path
 import struct
 
 
-def inspect(path):
+def inspect(path, slot_size=0xC0000):
     raw = Path(path).read_bytes()
-    if not 24 <= len(raw) <= 0xC0000:
+    if not 24 <= len(raw) <= slot_size:
         raise ValueError(f"Image size {len(raw)} is outside the stock OTA slot")
     magic, count, mode, speed_size, entry = struct.unpack_from("<BBBBI", raw)
     if magic != 0xE9 or not 1 <= count <= 16:

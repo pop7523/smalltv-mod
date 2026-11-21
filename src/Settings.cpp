@@ -503,6 +503,10 @@ void Settings::setDefaults() {
 
   mode = DEFAULT_MODE;
   themeId = "";
+#if defined(SMALLTV_SDC2_USB)
+  mode = MODE_THEME;
+  themeId = "sdc2-classic";
+#endif
   carouselSec = DEFAULT_CAROUSEL_SEC;
   carouselTicker = carouselUsage = carouselRadar = carouselHa = true;
   carouselTheme = false;   // opt in: needs an installed theme, else the slot shows an error
@@ -518,6 +522,12 @@ void Settings::setDefaults() {
   radar.setDefaults();
   ha.setDefaults();
   clock.setDefaults();
+#if defined(SMALLTV_SDC2_USB)
+  clock.tz = "Asia/Seoul";
+  clock.tzPosix = "KST-9";
+  clock.lat = 37.5665f;
+  clock.lon = 126.9780f;
+#endif
   display.setDefaults();
   wg.setDefaults();
   auth.setDefaults();

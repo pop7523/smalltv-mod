@@ -1,13 +1,10 @@
-name: SDC2 experimental build
-
+name: SmallTV SDC2 USB port
 on:
   workflow_dispatch:
   push:
     branches: [sdc2-build]
-
 permissions:
   contents: read
-
 jobs:
   firmware:
     runs-on: ubuntu-latest
@@ -19,55 +16,50 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-      - name: Pin both PlatformIO cores
-        shell: bash
+      - name: Pin build core constraints
         run: |
           printf 'platformio==6.1.19\npioarduino==6.1.19\n' > "$RUNNER_TEMP/pio-constraints.txt"
           echo "PIP_CONSTRAINT=$RUNNER_TEMP/pio-constraints.txt" >> "$GITHUB_ENV"
           echo "UV_CONSTRAINT=$RUNNER_TEMP/pio-constraints.txt" >> "$GITHUB_ENV"
-      - name: Check host-side upload gates
-        run: python tools/check_sdc2_port.py
-      - name: Cache compact framework rebuild
+      - uses: actions/cache/restore@v6
         id: pio-cache
-        uses: actions/cache/restore@v6
         with:
           path: ~/.platformio
           key: sdc2-compact-${{ runner.os }}-${{ hashFiles('platformio.sdc2.ini') }}
           restore-keys: |
             sdc2-compact-${{ runner.os }}-
-      - name: Install build core
-        run: pip install platformio==6.1.19
-      - name: Compile SDC2 candidate and retain diagnostics
+      - name: Install core and test packaging bounds
+        run: |
+          pip install platformio==6.1.19
+          python tools/check_sdc2_port.py
+          python tools/test_sdc2_usb_package.py
+      - name: Build SmallTV application for SDC2
         shell: bash
         run: |
           mkdir -p build-logs
           set -o pipefail
-          pio run -e smalltv_sdc2_theme 2>&1 | tee build-logs/firmware-build.log
-      - name: Collect build configuration and map
-        id: diagnostics
-        if: always()
-        shell: bash
+          pio run -e smalltv_sdc2_usb 2>&1 | tee build-logs/firmware-build.log
+      - name: Validate themes with SmallTV engine and build LittleFS
         run: |
-          mkdir -p build-logs
-          find .pio -type f \( -name 'sdkconfig*' -o -name '*.map' \) -print > build-logs/diagnostic-files.txt 2>/dev/null || true
-          printf 'This artifact contains diagnostics only; no firmware is certified for device installation.\n' > build-logs/STATUS.txt
-          if grep -q 'Starting Arduino compile' build-logs/firmware-build.log; then
-            echo 'framework_ready=true' >> "$GITHUB_OUTPUT"
-          fi
-      - name: Preserve successfully rebuilt framework even if the application fails
-        if: always() && steps.diagnostics.outputs.framework_ready == 'true' && steps.pio-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
+          python tools/make_sdc2_themes.py
+          pio run -e smalltv_sdc2_usb -t buildfs
+      - name: Package USB installation and new-layout OTA image
+        run: |
+          python tools/package_sdc2_usb.py .pio/build/smalltv_sdc2_usb dist-sdc2
+          cp SDC2-USB.md dist-sdc2/README.md
+          cp tools/flash_sdc2_usb.py dist-sdc2/
+          cp -r sdc2-themes dist-sdc2/
+      - uses: actions/cache/save@v6
+        if: success() && steps.pio-cache.outputs.cache-hit != 'true'
         with:
           path: ~/.platformio
           key: ${{ steps.pio-cache.outputs.cache-primary-key }}
-      - name: Save diagnostic artifact (never publish a release)
-        if: always()
-        uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v6
         with:
-          name: sdc2-build-diagnostics
-          path: |
-            build-logs/
-            .pio/build/smalltv_sdc2_theme/*.map
-            .pio/build/smalltv_sdc2_theme/sdkconfig*
-          if-no-files-found: warn
-          include-hidden-files: true
+          name: SmallTV-SDC2-USB
+          path: dist-sdc2/
+      - uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: SmallTV-SDC2-diagnostics
+          path: build-logs/
