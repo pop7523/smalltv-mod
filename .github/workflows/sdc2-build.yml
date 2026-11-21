@@ -27,6 +27,13 @@ jobs:
           echo "UV_CONSTRAINT=$RUNNER_TEMP/pio-constraints.txt" >> "$GITHUB_ENV"
       - name: Check host-side upload gates
         run: python tools/check_sdc2_port.py
+      - name: Cache compact framework rebuild
+        uses: actions/cache@v6
+        with:
+          path: ~/.platformio
+          key: sdc2-compact-${{ runner.os }}-${{ hashFiles('platformio.sdc2.ini') }}
+          restore-keys: |
+            sdc2-compact-${{ runner.os }}-
       - name: Install build core
         run: pip install platformio==6.1.19
       - name: Compile SDC2 candidate and retain diagnostics
@@ -34,7 +41,7 @@ jobs:
         run: |
           mkdir -p build-logs
           set -o pipefail
-          pio run -c platformio.sdc2.ini -e smalltv_sdc2 2>&1 | tee build-logs/firmware-build.log
+          pio run -c platformio.sdc2.ini -e smalltv_sdc2_compact 2>&1 | tee build-logs/firmware-build.log
       - name: Collect build configuration and map
         if: always()
         shell: bash
@@ -49,6 +56,6 @@ jobs:
           name: sdc2-build-diagnostics
           path: |
             build-logs/
-            .pio/build/smalltv_sdc2/*.map
-            .pio/build/smalltv_sdc2/sdkconfig*
+            .pio/build/smalltv_sdc2_compact/*.map
+            .pio/build/smalltv_sdc2_compact/sdkconfig*
           if-no-files-found: warn
