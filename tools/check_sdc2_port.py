@@ -13,6 +13,7 @@ def main():
     config = configparser.ConfigParser(interpolation=None, strict=False)
     config.read([ROOT / "platformio.ini", ROOT / "platformio.sdc2.ini"], encoding="utf-8")
     profile = config["env:smalltv_sdc2"]
+    assert "platformio.sdc2.ini" in config["platformio"]["extra_configs"]
     rows = []
     for line in (ROOT / profile["board_build.partitions"]).read_text().splitlines():
         if not line.strip() or line.startswith("#"):

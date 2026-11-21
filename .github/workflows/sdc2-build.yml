@@ -41,7 +41,7 @@ jobs:
         run: |
           mkdir -p build-logs
           set -o pipefail
-          pio run -c platformio.sdc2.ini -e smalltv_sdc2_compact 2>&1 | tee build-logs/firmware-build.log
+          pio run -e smalltv_sdc2_compact 2>&1 | tee build-logs/firmware-build.log
       - name: Collect build configuration and map
         if: always()
         shell: bash
