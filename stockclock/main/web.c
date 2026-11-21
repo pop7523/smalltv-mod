@@ -227,7 +227,10 @@ static esp_err_t h_desk(httpd_req_t *r)
     }
     if(!desk_valid(&s)) goto bad;
     if(desk_save(&s)!=ESP_OK) return httpd_resp_send_err(r,HTTPD_500_INTERNAL_SERVER_ERROR,"save failed");
-    g_desk=s; display_redraw();
+    xSemaphoreTake(g_qmux,portMAX_DELAY);
+    g_desk=s;
+    xSemaphoreGive(g_qmux);
+    display_redraw();
     httpd_resp_set_type(r,"application/json");
     return httpd_resp_sendstr(r,"{\"ok\":true}");
 bad:

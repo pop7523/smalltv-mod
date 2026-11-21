@@ -796,7 +796,7 @@ static void draw_night(canvas_t *c)
 #define SHOW_NIGHT -2
 #define SHOW_PUSH(k) (-10 - (k))  // a push slot shown out of rotation (alert)
 
-static void draw_home(canvas_t *c)
+static desk_view_t home_view(void)
 {
     desk_view_t v = {0};
     time_t now; time(&now);
@@ -814,18 +814,23 @@ static void draw_home(canvas_t *c)
         strcat(v.temp,GLYPH_DEG); strcat(v.temp,g_cfg.wx_f?"F":"C");
         strlcpy(v.condition,wx_text(s_wx.code),sizeof(v.condition));
     }
-    desk_draw(c,&g_desk,&v);
+    return v;
 }
 
 static void render(int show, int pages, int nq, const int *pidx, int np)
 {
+    desk_config_t desk;
+    xSemaphoreTake(g_qmux, portMAX_DELAY);
+    desk = g_desk;
+    xSemaphoreGive(g_qmux);
+    desk_view_t view = home_view();
     for (int y = 0, bi = 0; y < SCREEN_H; y += BAND_H, bi ^= 1) {
         xSemaphoreTake(s_sem, portMAX_DELAY);
         canvas_t c = { .buf = s_buf[bi], .y0 = y, .h = BAND_H };
         // rotation: [overview] [weather] [claude] [push pages] symbols...
         int p = show;
         if (show == SHOW_STATUS) draw_status(&c);
-        else if (g_desk.enabled && (show >= 0 || show == SHOW_NIGHT)) draw_home(&c);
+        else if (desk.enabled && (show >= 0 || show == SHOW_NIGHT)) desk_draw(&c,&desk,&view);
         else if (show == SHOW_NIGHT) draw_night(&c);
         else if (show <= SHOW_PUSH(0)) draw_push(&c, &s_push[SHOW_PUSH(0) - show]);
         else if (g_cfg.overview && p-- == 0) draw_overview(&c, s_snap, nq);

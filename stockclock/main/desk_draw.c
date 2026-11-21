@@ -12,7 +12,7 @@ void desk_draw(canvas_t *c,const desk_config_t *s,const desk_view_t *v) {
     int y=(s->layout==1?28:s->layout==2?70:58)+s->offset;
     if(s->date) text(c,&font_s,s->layout==1?3:28,v->date,dim);
     text(c,&font_xxl,y,v->clock,fg);
-    if(s->seconds) text(c,&font_s,y+82,v->seconds,acc);
+    if(s->seconds) gfx_text(c,&font_s,228,4,v->seconds,acc,ALIGN_RIGHT);
     if(!s->weather) return;
     if(s->layout==1) gfx_round_rect(c,8,141,224,91,12,gfx_mix(bg,acc,26));
     if(s->layout!=2) {
