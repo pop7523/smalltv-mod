@@ -22,6 +22,7 @@ int main(){
     s.lat=-0.0001;s.lon=-180;assert(weather_url(s).find("latitude=-0.0001&longitude=-180.0000")!=std::string::npos);s=Settings{};
     for(const char* bad:{"{\"layout\":99}","{\"bg\":\"#zzzzzz\"}","{\"seconds\":1}","{\"lat\":999}","[]"})assert(!parse_settings(bad,s,next));
     assert(parse_settings("{\"bg\":\"#ffffff\",\"lat\":35.1234,\"seconds\":false}",s,next));
+    fprintf(stderr,"config parse: bg=%lx seconds=%d lat=%.12f\n",(unsigned long)next.bg,next.seconds,next.lat);
     assert(next.bg==0xffffff&&!next.seconds&&std::abs(next.lat-35.1234)<0.000001);
     Settings roundtrip;assert(parse_settings(settings_json(next),s,roundtrip));assert(roundtrip.bg==next.bg&&std::abs(roundtrip.lat-next.lat)<0.000001);
     tm time={};time.tm_year=126;time.tm_mon=10;time.tm_mday=22;time.tm_hour=23;time.tm_min=59;time.tm_sec=58;time.tm_wday=0;
