@@ -22,7 +22,7 @@ void display_task(void*){
         if(wgen!=weather_seen)values=weather_values;xSemaphoreGive(state_mutex);
         if(!initialized || seen!=generation || online!=was_online){
             smalltv::Theme theme;std::string error;
-            if(smalltv::parseTheme(make_theme(s,!online),theme,error)){
+            if(smalltv::parseTheme(make_theme(s,!online,setup_ssid),theme,error)){
                 engine.setTheme(std::move(theme),esp_timer_get_time()/1000);seen=generation;was_online=online;initialized=true;
                 setenv("TZ",s.timezone,1);tzset();board_apply(s);weather_seen=~0u;
             }

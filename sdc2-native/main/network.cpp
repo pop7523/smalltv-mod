@@ -23,11 +23,20 @@ void event(void*,esp_event_base_t base,int32_t id,void* data){
     }
 }
 void worker(void*){
-    int64_t retry=0,next_weather=0;double lat=1000,lon=1000;
+    int64_t retry=0,next_weather=0,online_since=0,offline_since=0;double lat=1000,lon=1000;bool ap_enabled=true;
     for(;;){
         Settings s;bool online;
         xSemaphoreTake(state_mutex,portMAX_DELAY);s=settings;online=connected;xSemaphoreGive(state_mutex);
         int64_t now=esp_timer_get_time();
+        if(online){
+            offline_since=now;
+            if(!online_since)online_since=now;
+            if(ap_enabled && now-online_since>20000000 && esp_wifi_set_mode(WIFI_MODE_STA)==ESP_OK)ap_enabled=false;
+        }else{
+            online_since=0;
+            if(!offline_since)offline_since=now;
+            if(!ap_enabled && now-offline_since>25000000 && esp_wifi_set_mode(WIFI_MODE_APSTA)==ESP_OK)ap_enabled=true;
+        }
         if(!online && now>=retry){esp_wifi_connect();retry=now+30000000;}
         if(s.lat!=lat || s.lon!=lon){next_weather=0;lat=s.lat;lon=s.lon;}
         if(online && s.weather && now>=next_weather){

@@ -1,5 +1,5 @@
 idf_component_register(
-    SRCS app.cpp board.cpp model.cpp web.cpp network.cpp
+    SRCS app.cpp board.cpp model.cpp store.cpp web.cpp network.cpp
          ../../src/features/theme/ThemeEngine.cpp
     INCLUDE_DIRS . ../../src/features/theme ../../.deps/ArduinoJson/src
     EMBED_TXTFILES index.html
