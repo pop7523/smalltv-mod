@@ -1,4 +1,5 @@
 #include "port.h"
+#include "gifs.h"
 #include "esp_timer.h"
 #include "esp_system.h"
 #include "esp_ota_ops.h"
@@ -33,8 +34,10 @@ void display_task(void*){
         }
         time_t now=time(nullptr);tm local;localtime_r(&now,&local);
         auto dirty=engine.update(esp_timer_get_time()/1000,now>1700000000?&local:nullptr);
-        if(initialized && display_ok && !smalltv::render(engine,dirty,assets,board_display()))display_ok=false;
-        vTaskDelay(pdMS_TO_TICKS(100));
+        auto gif_dirty=gifs_tick(s,online,esp_timer_get_time()/1000);
+        dirty.insert(dirty.end(),gif_dirty.begin(),gif_dirty.end());
+        if(initialized && display_ok && !smalltv::render(engine,dirty,assets,gifs_display()))display_ok=false;
+        vTaskDelay(pdMS_TO_TICKS(s.gif_mode?20:100));
     }
 }
 void restart_task(void*){vTaskDelay(pdMS_TO_TICKS(1200));esp_restart();}
@@ -43,7 +46,7 @@ void restart_later(){xTaskCreate(restart_task,"restart",2048,nullptr,3,nullptr);
 extern "C" void app_main(){
     // Never erase NVS on an error: it contains the device's Wi-Fi credentials.
     ESP_ERROR_CHECK(nvs_flash_init());state_mutex=xSemaphoreCreateMutex();if(!state_mutex)esp_restart();
-    load_settings();
+    load_settings();gifs_init();
     nvs_handle_t guard=0;uint8_t boots=0;
     if(nvs_open("smalltv",NVS_READWRITE,&guard)==ESP_OK){
         char previous[33]={};size_t n=sizeof(previous);nvs_get_str(guard,"boot_version",previous,&n);

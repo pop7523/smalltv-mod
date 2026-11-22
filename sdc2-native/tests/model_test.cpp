@@ -27,8 +27,9 @@ int main(){
     Settings roundtrip;assert(parse_settings(settings_json(next),s,roundtrip));assert(roundtrip.bg==next.bg&&std::abs(roundtrip.lat-next.lat)<0.00001);
     tm time={};time.tm_year=126;time.tm_mon=10;time.tm_mday=22;time.tm_hour=23;time.tm_min=59;time.tm_sec=58;time.tm_wday=0;
     unsigned count=0;
-    for(int layout=0;layout<3;layout++)for(int offset=-16;offset<=16;offset+=16)for(int flags=0;flags<32;flags++){
+    for(int gif_mode=0;gif_mode<=4;gif_mode++)for(int layout=0;layout<3;layout++)for(int offset=-16;offset<=16;offset+=16)for(int flags=0;flags<32;flags++){
         s=Settings{};s.layout=layout;s.offset=offset;s.seconds=flags&1;s.date=(flags>>1)&1;s.weather=(flags>>2)&1;s.h24=(flags>>3)&1;
+        s.gif_mode=gif_mode;
         if(flags&1){s.bg=0xf4f7ff;s.fg=0x080d18;}
         smalltv::Theme theme;std::string error;
         std::string raw=make_theme(s,flags&16,"SmallTV-SDC2-ABCD");

@@ -1,4 +1,5 @@
 #include "port.h"
+#include "gifs.h"
 #include <ArduinoJson.h>
 #include "esp_http_server.h"
 #include "esp_app_desc.h"
@@ -9,6 +10,8 @@
 
 extern const char html_start[] asm("_binary_index_html_start");
 extern const char html_end[] asm("_binary_index_html_end");
+extern const char gif_js_start[] asm("_binary_gif_codec_js_start");
+extern const char gif_js_end[] asm("_binary_gif_codec_js_end");
 namespace {
 esp_err_t reply(httpd_req_t* r,const std::string& s){httpd_resp_set_type(r,"application/json");httpd_resp_set_hdr(r,"Cache-Control","no-store");return httpd_resp_send(r,s.data(),s.size());}
 bool read(httpd_req_t* r,std::string& body){
@@ -16,6 +19,8 @@ bool read(httpd_req_t* r,std::string& body){
     while(got<body.size()){int n=httpd_req_recv(r,&body[got],body.size()-got);if(n<=0)return false;got+=n;}return true;
 }
 esp_err_t index(httpd_req_t* r){httpd_resp_set_type(r,"text/html; charset=utf-8");httpd_resp_set_hdr(r,"Cache-Control","no-store");return httpd_resp_send(r,html_start,html_end-html_start);}
+esp_err_t gif_js(httpd_req_t* r){httpd_resp_set_type(r,"text/javascript; charset=utf-8");return httpd_resp_send(r,gif_js_start,gif_js_end-gif_js_start);}
+esp_err_t gif_state(httpd_req_t* r){return reply(r,gifs_state());}
 esp_err_t state(httpd_req_t* r){
     JsonDocument d;Settings s;
     xSemaphoreTake(state_mutex,portMAX_DELAY);s=settings;d["connected"]=connected;d["ip"]=device_ip;d["ap"]=setup_ssid;d["display_ok"]=display_ok;d["weather_error"]=weather_error;
@@ -63,9 +68,12 @@ esp_err_t ota(httpd_req_t* r){
 esp_err_t reboot(httpd_req_t* r){reply(r,"{\"ok\":true}");restart_later();return ESP_OK;}
 }
 void web_start(){
-    httpd_config_t config=HTTPD_DEFAULT_CONFIG();config.stack_size=8192;config.max_uri_handlers=8;config.lru_purge_enable=true;config.recv_wait_timeout=15;
+    httpd_config_t config=HTTPD_DEFAULT_CONFIG();config.stack_size=8192;config.max_uri_handlers=14;config.lru_purge_enable=true;config.recv_wait_timeout=15;
     httpd_handle_t server;ESP_ERROR_CHECK(httpd_start(&server,&config));
     auto route=[&](const char* url,httpd_method_t method,esp_err_t(*handler)(httpd_req_t*)){httpd_uri_t u={};u.uri=url;u.method=method;u.handler=handler;ESP_ERROR_CHECK(httpd_register_uri_handler(server,&u));};
     route("/",HTTP_GET,index);route("/api/state",HTTP_GET,state);route("/api/settings",HTTP_POST,configure);
     route("/api/wifi",HTTP_POST,wifi);route("/ota",HTTP_POST,ota);route("/api/reboot",HTTP_POST,reboot);
+    route("/gif-codec.js",HTTP_GET,gif_js);route("/api/gifs",HTTP_GET,gif_state);
+    route("/api/gif",HTTP_POST,gifs_upload);route("/api/gif",HTTP_DELETE,gifs_delete);route("/api/gif",HTTP_GET,gifs_download);
+    route("/api/gifs/initialize",HTTP_POST,gifs_initialize_storage);
 }

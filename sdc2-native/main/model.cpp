@@ -8,7 +8,7 @@
 #include <cstdlib>
 
 bool valid_settings(const Settings& s){
-    return s.version==1 && s.layout>=0 && s.layout<=2 && s.brightness>=0 && s.brightness<=100 &&
+    return s.version==1 && s.gif_mode>=0 && s.gif_mode<=4 && s.gif_x>=0 && s.gif_x<=160 && s.gif_y>=0 && s.gif_y<=160 && s.layout>=0 && s.layout<=2 && s.brightness>=0 && s.brightness<=100 &&
         s.offset>=-16 && s.offset<=16 && s.bg<=0xffffff && s.fg<=0xffffff && s.accent<=0xffffff &&
         std::isfinite(s.lat) && std::isfinite(s.lon) && s.lat>=-90 && s.lat<=90 && s.lon>=-180 && s.lon<=180 &&
         s.timezone[0] && memchr(s.timezone,0,sizeof(s.timezone));
@@ -24,6 +24,7 @@ std::string weather_url(const Settings& s){
 }
 static void add_config(JsonDocument& d,const Settings& s){
     d["layout"]=s.layout;d["brightness"]=s.brightness;d["offset"]=s.offset;
+    d["gif_mode"]=s.gif_mode;d["gif_x"]=s.gif_x;d["gif_y"]=s.gif_y;
     d["seconds"]=s.seconds;d["date"]=s.date;d["weather"]=s.weather;d["h24"]=s.h24;
     d["rotate"]=s.rotate;d["invert"]=s.invert;d["lat"]=s.lat;d["lon"]=s.lon;d["timezone"]=s.timezone;
     for(auto pair:{std::make_pair("bg",s.bg),std::make_pair("fg",s.fg),std::make_pair("accent",s.accent)}){
@@ -36,7 +37,7 @@ bool parse_settings(const std::string& body,const Settings& old,Settings& out){
     Settings s=old;
     auto integer=[&](const char* key,int& dest){if(d[key].isNull())return true;if(!d[key].is<int>())return false;dest=d[key].as<int>();return true;};
     auto boolean=[&](const char* key,bool& dest){if(d[key].isNull())return true;if(!d[key].is<bool>())return false;dest=d[key].as<bool>();return true;};
-    if(!integer("layout",s.layout)||!integer("brightness",s.brightness)||!integer("offset",s.offset)||
+    if(!integer("gif_mode",s.gif_mode)||!integer("gif_x",s.gif_x)||!integer("gif_y",s.gif_y)||!integer("layout",s.layout)||!integer("brightness",s.brightness)||!integer("offset",s.offset)||
        !boolean("seconds",s.seconds)||!boolean("date",s.date)||!boolean("weather",s.weather)||
        !boolean("h24",s.h24)||!boolean("rotate",s.rotate)||!boolean("invert",s.invert))return false;
     const char* keys[]={"bg","fg","accent"};uint32_t* destinations[]={&s.bg,&s.fg,&s.accent};
@@ -67,9 +68,11 @@ std::string make_theme(const Settings& s,bool offline,const char* ssid){
     auto text=[&](const char* id,const char* value,int y,int size,const char* color){auto l=layers.add<JsonObject>();l["id"]=id;l["type"]="text";l["x"]=120;l["y"]=y;l["anchor"]="center";l["value"]=value;l["size"]=size;l["color"]=color;};
     if(s.date)text("date","{WD} {DD} {MON}",18,16,fg);
     int clock_y=(s.layout==1?75:s.layout==2?110:92)+s.offset;
+    if(s.gif_mode)clock_y=75+s.offset;
     text("time",s.h24?"{HH}:{MM}":"{hh}:{MM}",clock_y,56,fg);
     if(s.seconds){text("seconds","{SS}",18,16,acc);layers[layers.size()-1]["x"]=220;}
     if(offline){text("wifi",ssid,187,12,acc);text("address","192.168.4.1",218,16,fg);}
+    else if(s.weather && s.gif_mode){text("weather","{wx.temp} C | {wx.hum}%",226,12,fg);}
     else if(s.weather){
         if(s.layout==1){auto card=layers.add<JsonObject>();card["id"]="card";card["type"]="shape";card["shape"]="rectangle";card["x"]=8;card["y"]=155;card["width"]=224;card["height"]=77;card["cornerRadius"]=10;card["fill"]="#152c33";}
         text("temperature","{wx.temp} C",184,24,acc);text("humidity","Humidity {wx.hum}%",218,12,fg);

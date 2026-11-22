@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
       - uses: actions/checkout@v7
         with:
           repository: bblanchon/ArduinoJson
@@ -20,11 +23,23 @@ jobs:
           clang++ -std=c++17 -g -O1 -Wall -Wextra -Werror -fsanitize=address,undefined -isystem .deps/ArduinoJson/src -Isrc/features/theme -Isdc2-native/main sdc2-native/tests/model_test.cpp sdc2-native/main/model.cpp src/features/theme/ThemeEngine.cpp -o /tmp/smalltv-test
           /tmp/smalltv-test
           python tools/probe_sdc2_weather.py
+      - name: Test GIF conversion and native decoder against Pillow disposal references
+        run: |
+          npm --prefix sdc2-native/web install --no-package-lock
+          sdc2-native/web/node_modules/.bin/esbuild sdc2-native/web/gif-source.js --bundle --platform=node --format=cjs --outfile=/tmp/smalltv-gif-codec.cjs
+          python -m pip install Pillow
+          python sdc2-native/tests/gif_fixtures.py
+          node sdc2-native/tests/gif_test.cjs
+          clang++ -std=c++17 -g -O1 -Wall -Wextra -Werror -fsanitize=address,undefined -Isdc2-native/main sdc2-native/tests/gif_test.cpp sdc2-native/main/animation.cpp -o /tmp/smalltv-gif-test
+          for disposal in 1 2 3; do /tmp/smalltv-gif-test /tmp/smalltv-gifs/disposal-$disposal.s8g /tmp/smalltv-gifs/disposal-$disposal.rgba; done
   firmware:
     runs-on: ubuntu-latest
     container: espressif/idf:v5.5.1
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
       - uses: actions/checkout@v7
         with:
           repository: bblanchon/ArduinoJson
@@ -34,6 +49,10 @@ jobs:
         shell: bash
         working-directory: sdc2-native
         run: |
+          cd ..
+          npm --prefix sdc2-native/web install --no-package-lock
+          sdc2-native/web/node_modules/.bin/esbuild sdc2-native/web/gif-source.js --bundle --minify --format=iife --global-name=SmallTVGif --outfile=sdc2-native/main/gif-codec.js
+          cd sdc2-native
           . /opt/esp/idf/export.sh
           idf.py set-target esp32c2
           idf.py build

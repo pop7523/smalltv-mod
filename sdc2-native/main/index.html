@@ -11,10 +11,17 @@
 <label>시간대 (POSIX)</label><input id="timezone" value="KST-9"><small>한국: KST-9</small>
 <div class="grid"><div><label>날씨 위도</label><input id="lat" type="number" step="0.0001" min="-90" max="90"></div><div><label>날씨 경도</label><input id="lon" type="number" step="0.0001" min="-180" max="180"></div></div>
 <button id="save">저장하고 적용</button></section>
+<section><h2>80×80 GIF · 최대 3개</h2>
+<p id="gif-status">저장 공간 확인 중…</p><button id="gif-init" hidden>이미지 저장 공간 초기화</button>
+<label>화면에 표시</label><select id="gif_mode"><option value="0">끄기</option><option value="1">1번 GIF</option><option value="2">2번 GIF</option><option value="3">3번 GIF</option><option value="4">3개 나란히</option></select>
+<div class="grid"><div><label>가로 위치 (개별 표시)</label><input id="gif_x" type="number" min="0" max="160" value="80"></div><div><label>세로 위치</label><input id="gif_y" type="number" min="0" max="160" value="132"></div></div>
+<button id="gif-save">GIF 표시 설정 저장</button>
+<div id="gif-slots"></div><small>80×80 GIF, 최대 300프레임. 업로드 시 자동 변환하며 변환 후 파일당 384KiB까지 저장됩니다. 투명 배경과 애니메이션을 지원합니다.</small>
+</section>
 <section><h2>Wi-Fi</h2><label>2.4GHz 네트워크 이름</label><input id="ssid" autocomplete="off" maxlength="32"><label>비밀번호</label><input id="pass" type="password" maxlength="64" autocomplete="new-password"><button id="wifi">Wi-Fi 연결</button><small>연결 실패 시 설정용 Wi-Fi가 다시 열립니다. 시계 화면의 이름과 주소를 확인하세요.</small></section>
 <section><h2>펌웨어 업데이트</h2><input id="file" type="file" accept=".bin"><button id="upload">OTA .bin 업로드</button><p><small>SDC2용 앱 전용 .bin을 선택하세요. factory 파일은 사용할 수 없습니다.</small></p></section>
 <p><small>smalltv-mod 원본 ThemeEngine.cpp · SDC2 네이티브 포트</small></p><div id="msg"></div>
-<script>
+<script src="/gif-codec.js"></script><script>
 const $=id=>document.getElementById(id),numeric=['layout','offset','brightness','lat','lon'],boolean=['seconds','date','weather','h24','rotate','invert'],colors=['bg','fg','accent'];let first=true;
 function toast(t){$('msg').textContent=t;$('msg').style.display='block';clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>$('msg').style.display='none',6000)}
 async function post(url,data){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(!r.ok)throw Error(await r.text());return r.json()}
@@ -34,5 +41,19 @@ for(const id of [...numeric,...boolean,...colors])$(id).addEventListener('input'
 $('save').onclick=async()=>{try{let d={timezone:$('timezone').value};for(const k of numeric)d[k]=+$(k).value;for(const k of boolean)d[k]=$(k).value==='true';for(const k of colors)d[k]=$(k).value;await post('/api/settings',d);toast('저장하고 적용했습니다')}catch(e){toast(e.message)}};
 $('wifi').onclick=async()=>{try{await post('/api/wifi',{ssid:$('ssid').value,pass:$('pass').value});$('pass').value='';toast('연결 중입니다. 시계와 Wi-Fi 주소를 확인하세요.')}catch(e){toast(e.message)}};
 $('upload').onclick=async()=>{const f=$('file').files[0];if(!f)return toast('.bin을 선택하세요');if(f.size>786432)return toast('OTA 슬롯 용량을 초과합니다');$('upload').disabled=true;try{const r=await fetch('/ota',{method:'POST',body:f});if(!r.ok)throw Error(await r.text());toast('업데이트 완료. 재부팅합니다.')}catch(e){toast(e.message)}finally{$('upload').disabled=false}};
-load();setInterval(load,10000);
+async function gifRequest(url,options){const r=await fetch(url,options);if(!r.ok)throw Error(await r.text());return r}
+async function loadGifs(){try{
+const s=await(await fetch('/api/gifs')).json();$('gif-status').textContent=s.ready?'3개 슬롯에 저장할 수 있습니다.':'기존 이미지 저장 영역을 읽을 수 없습니다. 초기화하면 기존 이미지 파일이 지워집니다.';
+$('gif-init').hidden=s.ready;$('gif-slots').replaceChildren();
+for(const slot of s.slots||[]){const box=document.createElement('div');box.style='border-top:1px solid #40526b;margin-top:16px;padding-top:12px';
+const title=document.createElement('b');title.textContent=slot.slot+'번 · '+(slot.bytes?slot.frames+'프레임 / '+Math.ceil(slot.bytes/1024)+'KiB':'비어 있음');box.append(title);
+const input=document.createElement('input');input.type='file';input.accept='image/gif,.gif';input.style.marginTop='10px';box.append(input);
+const upload=document.createElement('button');upload.textContent='GIF 업로드';upload.disabled=!s.ready;
+upload.onclick=async()=>{const file=input.files[0];if(!file)return toast('80×80 GIF를 선택하세요');upload.disabled=true;try{toast('GIF 변환 중…');await new Promise(r=>setTimeout(r,30));const encoded=SmallTVGif.convertGif(await file.arrayBuffer());toast('기기에 저장 중…');await gifRequest('/api/gif?slot='+slot.slot,{method:'POST',body:encoded});toast('GIF 저장 완료. 표시 모드를 선택하고 저장하세요.');await loadGifs()}catch(e){toast(e.message)}finally{upload.disabled=false}};box.append(upload);
+if(slot.bytes){const remove=document.createElement('button');remove.textContent='삭제';remove.onclick=async()=>{try{await gifRequest('/api/gif?slot='+slot.slot,{method:'DELETE'});await loadGifs()}catch(e){toast(e.message)}};box.append(remove)}
+$('gif-slots').append(box)}
+}catch(e){$('gif-status').textContent='GIF 저장 공간에 연결할 수 없습니다'}}
+$('gif-init').onclick=async()=>{if(!confirm('이미지 저장 영역을 초기화하면 이 영역의 기존 사진·GIF가 지워집니다. 계속할까요?'))return;try{await gifRequest('/api/gifs/initialize',{method:'POST',body:'INITIALIZE'});await loadGifs();toast('이미지 저장 공간 준비 완료')}catch(e){toast(e.message)}};
+$('gif-save').onclick=async()=>{try{await post('/api/settings',{gif_mode:+$('gif_mode').value,gif_x:+$('gif_x').value,gif_y:+$('gif_y').value});toast('GIF 표시 설정을 저장했습니다')}catch(e){toast(e.message)}};
+load();loadGifs();setInterval(load,10000);
 </script></html>

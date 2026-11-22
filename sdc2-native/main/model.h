@@ -3,6 +3,7 @@
 #include <string>
 struct Settings {
     int version=1,layout=0,brightness=80,offset=0;
+    int gif_mode=0,gif_x=80,gif_y=132;
     uint32_t bg=0x080d18,fg=0xf4f7ff,accent=0x65dbce;
     bool seconds=true,date=true,weather=true,h24=true,rotate=false,invert=true;
     double lat=37.5665,lon=126.9780;
