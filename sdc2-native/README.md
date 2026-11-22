@@ -30,7 +30,40 @@ and reopens after a connection failure. Three failed boots attempt to select
 the other valid application slot; that slot may contain an earlier custom
 firmware rather than a manufacturer's original image.
 
-## Scope and checks
+## GIF slots
+
+The web UI accepts up to three 80x80 GIFs. Select one slot, turn GIFs off,
+or display all three side by side. Individual horizontal position and shared
+vertical position are adjustable. GIF mode reserves room below the big clock
+and puts the temperature/humidity on a compact footer line.
+
+GIF decoding and disposal/transparency compositing run in the browser using
+gifuct-js 2.1.2 (MIT; notice in web/LICENSE-gifuct-js). The browser converts the
+result to a validated, run-length encoded RGB565 animation with binary alpha.
+The device saves this converted animation, rather than the original GIF bytes.
+The entire web converter is bundled locally and works over the device's HTTP
+interface without external CDNs or secure-context browser APIs.
+
+Limits: exactly 80x80, 1..300 frames, original GIF at most 2 MiB, converted slot
+at most 384 KiB. Delays are clamped to 20..10000 ms; actual playback speed also
+depends on display and flash I/O. Three decoded frames use about 40 KiB RAM.
+Playback keeps 24 KiB heap headroom and skips a slot if it cannot allocate its
+frame buffer.
+
+Files are stored in the existing spiffs data partition. Mounting never formats
+the partition automatically. If it cannot be mounted, the web interface offers
+an explicit image-storage initialization with an erase warning; this removes
+existing files in that data partition. The app partition table and NVS settings
+are not changed. Uploads use a staging file, validate every frame before
+publication, retain the previous file on invalid/interrupted uploads, and use
+a backup rename to recover interrupted replacement on the next mount.
+
+GIF conversion tests compare real disposal-1/2/3 GIFs against Pillow RGBA
+references and exercise the actual native decoder under ASan/UBSan, including
+truncation, invalid headers, dimensions, alpha and clipping. The device's flash
+filesystem and playback still need physical-device verification.
+
+## Other scope and checks
 
 The native web controls drive declarative text/shape clock and weather layouts
 through the original SmallTV engine. Desktop layout tests execute that exact
