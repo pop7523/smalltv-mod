@@ -18,6 +18,8 @@ struct Screen:smalltv::Display{
 };
 int main(){
     Settings s,next;assert(valid_settings(s));
+    assert(weather_url(s).find("latitude=37.5665&longitude=126.9780")!=std::string::npos);
+    s.lat=-0.0001;s.lon=-180;assert(weather_url(s).find("latitude=-0.0001&longitude=-180.0000")!=std::string::npos);s=Settings{};
     for(const char* bad:{"{\"layout\":99}","{\"bg\":\"#zzzzzz\"}","{\"seconds\":1}","{\"lat\":999}","[]"})assert(!parse_settings(bad,s,next));
     assert(parse_settings("{\"bg\":\"#ffffff\",\"lat\":35.1234,\"seconds\":false}",s,next));
     assert(next.bg==0xffffff&&!next.seconds&&std::abs(next.lat-35.1234)<0.000001);

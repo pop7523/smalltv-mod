@@ -40,8 +40,8 @@ void worker(void*){
         if(!online && now>=retry){esp_wifi_connect();retry=now+30000000;}
         if(s.lat!=lat || s.lon!=lon){next_weather=0;lat=s.lat;lon=s.lon;}
         if(online && s.weather && now>=next_weather){
-            char url[220];snprintf(url,sizeof(url),"http://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f&current=temperature_2m,relative_humidity_2m",s.lat,s.lon);
-            esp_http_client_config_t config={};config.url=url;config.timeout_ms=8000;config.disable_auto_redirect=true;
+            std::string url=weather_url(s);
+            esp_http_client_config_t config={};config.url=url.c_str();config.timeout_ms=8000;config.disable_auto_redirect=true;
             auto client=esp_http_client_init(&config);bool ok=false;std::vector<smalltv::ThemeValue> result;
             if(client){
                 if(esp_http_client_open(client,0)==ESP_OK){

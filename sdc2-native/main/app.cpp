@@ -25,7 +25,7 @@ void display_task(void*){
             if(smalltv::parseTheme(make_theme(s,!online,setup_ssid),theme,error)){
                 engine.setTheme(std::move(theme),esp_timer_get_time()/1000);seen=generation;was_online=online;initialized=true;
                 setenv("TZ",s.timezone,1);tzset();board_apply(s);weather_seen=~0u;
-            }
+            }else display_ok=false;
         }
         if(wgen!=weather_seen){
             xSemaphoreTake(state_mutex,portMAX_DELAY);values=weather_values;xSemaphoreGive(state_mutex);
@@ -33,7 +33,7 @@ void display_task(void*){
         }
         time_t now=time(nullptr);tm local;localtime_r(&now,&local);
         auto dirty=engine.update(esp_timer_get_time()/1000,now>1700000000?&local:nullptr);
-        if(initialized && display_ok)smalltv::render(engine,dirty,assets,board_display());
+        if(initialized && display_ok && !smalltv::render(engine,dirty,assets,board_display()))display_ok=false;
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }

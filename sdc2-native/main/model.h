@@ -12,3 +12,4 @@ std::string make_theme(const Settings& s,bool offline,const char* ssid="SmallTV-
 bool valid_settings(const Settings& s);
 bool parse_settings(const std::string& body,const Settings& old,Settings& out);
 std::string settings_json(const Settings& s);
+std::string weather_url(const Settings& s);

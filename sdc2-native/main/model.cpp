@@ -13,6 +13,15 @@ bool valid_settings(const Settings& s){
         std::isfinite(s.lat) && std::isfinite(s.lon) && s.lat>=-90 && s.lat<=90 && s.lon>=-180 && s.lon<=180 &&
         s.timezone[0] && memchr(s.timezone,0,sizeof(s.timezone));
 }
+std::string weather_url(const Settings& s){
+    // Integer formatting also works with IDF's nano printf (no float formats).
+    char lat[20],lon[20],url[220];
+    long a=std::lround(s.lat*10000),b=std::lround(s.lon*10000);
+    snprintf(lat,sizeof(lat),"%s%ld.%04ld",a<0?"-":"",std::labs(a)/10000,std::labs(a)%10000);
+    snprintf(lon,sizeof(lon),"%s%ld.%04ld",b<0?"-":"",std::labs(b)/10000,std::labs(b)%10000);
+    snprintf(url,sizeof(url),"http://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&current=temperature_2m,relative_humidity_2m",lat,lon);
+    return url;
+}
 static void add_config(JsonDocument& d,const Settings& s){
     d["layout"]=s.layout;d["brightness"]=s.brightness;d["offset"]=s.offset;
     d["seconds"]=s.seconds;d["date"]=s.date;d["weather"]=s.weather;d["h24"]=s.h24;
