@@ -63,7 +63,7 @@ esp_err_t ota(httpd_req_t* r){
 esp_err_t reboot(httpd_req_t* r){reply(r,"{\"ok\":true}");restart_later();return ESP_OK;}
 }
 void web_start(){
-    auto config=HTTPD_DEFAULT_CONFIG();config.stack_size=8192;config.max_uri_handlers=8;config.lru_purge_enable=true;config.recv_wait_timeout=15;
+    httpd_config_t config=HTTPD_DEFAULT_CONFIG();config.stack_size=8192;config.max_uri_handlers=8;config.lru_purge_enable=true;config.recv_wait_timeout=15;
     httpd_handle_t server;ESP_ERROR_CHECK(httpd_start(&server,&config));
     auto route=[&](const char* url,httpd_method_t method,esp_err_t(*handler)(httpd_req_t*)){httpd_uri_t u={};u.uri=url;u.method=method;u.handler=handler;ESP_ERROR_CHECK(httpd_register_uri_handler(server,&u));};
     route("/",HTTP_GET,index);route("/api/state",HTTP_GET,state);route("/api/settings",HTTP_POST,configure);

@@ -18,7 +18,17 @@
 const $=id=>document.getElementById(id),numeric=['layout','offset','brightness','lat','lon'],boolean=['seconds','date','weather','h24','rotate','invert'],colors=['bg','fg','accent'];let first=true;
 function toast(t){$('msg').textContent=t;$('msg').style.display='block';clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>$('msg').style.display='none',6000)}
 async function post(url,data){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(!r.ok)throw Error(await r.text());return r.json()}
-function preview(){const c=$('preview').getContext('2d'),layout=+$('layout').value,y=([92,75,110][layout]||92)+(+$('offset').value);c.fillStyle=$('bg').value;c.fillRect(0,0,240,240);c.textAlign='center';function t(v,y,size,color){c.fillStyle=color;c.font=size+'px monospace';c.fillText(v,120,y+size*.35)}if($('date').value==='true')t('SUN 22 NOV',24,16,$('fg').value);t('12:34',y,56,$('fg').value);if($('seconds').value==='true')t('56',y+46,16,$('accent').value);if($('weather').value==='true'){t('23 C',184,24,$('accent').value);t('Humidity 45%',218,12,$('fg').value)}}
+function preview(){
+const c=$('preview').getContext('2d'),layout=+$('layout').value,y=([92,75,110][layout]||92)+(+$('offset').value);
+c.fillStyle=$('bg').value;c.fillRect(0,0,240,240);c.textAlign='center';
+function t(v,y,size,color,x=120){c.fillStyle=color;c.font=size+'px monospace';c.fillText(v,x,y+size*.35)}
+if($('date').value==='true')t('SUN 22 NOV',18,16,$('fg').value);
+t('12:34',y,56,$('fg').value);
+if($('seconds').value==='true')t('56',18,16,$('accent').value,220);
+if($('weather').value==='true'){
+if(layout===1){c.fillStyle='#152c33';c.fillRect(8,155,224,77)}
+t('23 C',184,24,$('accent').value);t('Humidity 45%',218,12,$('fg').value)}
+}
 async function load(){try{const s=await(await fetch('/api/state')).json();$('status').textContent=s.version+' · '+(s.connected?s.ip:'설정 Wi-Fi: '+s.ap)+(s.weather_error?' · '+s.weather_error:'');if(first){for(const k in s.cfg){if($(k))$(k).value=String(s.cfg[k])}first=false;preview()}}catch(e){$('status').textContent='기기에 연결할 수 없습니다'}}
 for(const id of [...numeric,...boolean,...colors])$(id).addEventListener('input',preview);
 $('save').onclick=async()=>{try{let d={timezone:$('timezone').value};for(const k of numeric)d[k]=+$(k).value;for(const k of boolean)d[k]=$(k).value==='true';for(const k of colors)d[k]=$(k).value;await post('/api/settings',d);toast('저장하고 적용했습니다')}catch(e){toast(e.message)}};

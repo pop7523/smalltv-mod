@@ -17,13 +17,13 @@ void event(void*,esp_event_base_t base,int32_t id,void* data){
         auto* e=static_cast<ip_event_got_ip_t*>(data);
         xSemaphoreTake(state_mutex,portMAX_DELAY);connected=true;
         snprintf(device_ip,sizeof(device_ip),IPSTR,IP2STR(&e->ip_info.ip));xSemaphoreGive(state_mutex);
-        if(!sntp_started){auto config=ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");if(esp_netif_sntp_init(&config)==ESP_OK)sntp_started=true;}
+        if(!sntp_started){esp_sntp_config_t config=ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");if(esp_netif_sntp_init(&config)==ESP_OK)sntp_started=true;}
     }else if(base==WIFI_EVENT && id==WIFI_EVENT_STA_DISCONNECTED){
         xSemaphoreTake(state_mutex,portMAX_DELAY);connected=false;device_ip[0]=0;xSemaphoreGive(state_mutex);
     }
 }
-void worker(void*){
-    int64_t retry=0,next_weather=0,online_since=0,offline_since=0;double lat=1000,lon=1000;bool ap_enabled=true;
+void worker(void* initial_ap){
+    int64_t retry=0,next_weather=0,online_since=0,offline_since=0;double lat=1000,lon=1000;bool ap_enabled=initial_ap!=nullptr;
     for(;;){
         Settings s;bool online;
         xSemaphoreTake(state_mutex,portMAX_DELAY);s=settings;online=connected;xSemaphoreGive(state_mutex);
@@ -79,13 +79,15 @@ void network_start(){
     ESP_ERROR_CHECK(esp_netif_init());ESP_ERROR_CHECK(esp_event_loop_create_default());
     auto station=esp_netif_create_default_wifi_sta();esp_netif_create_default_wifi_ap();
     esp_netif_set_hostname(station,"smalltv-sdc2");
-    auto config=WIFI_INIT_CONFIG_DEFAULT();ESP_ERROR_CHECK(esp_wifi_init(&config));
+    wifi_init_config_t config=WIFI_INIT_CONFIG_DEFAULT();ESP_ERROR_CHECK(esp_wifi_init(&config));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT,ESP_EVENT_ANY_ID,event,nullptr));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT,IP_EVENT_STA_GOT_IP,event,nullptr));
     uint8_t mac[6];esp_read_mac(mac,ESP_MAC_WIFI_SOFTAP);snprintf(setup_ssid,sizeof(setup_ssid),"SmallTV-SDC2-%02X%02X",mac[4],mac[5]);
     wifi_config_t ap={};strcpy(reinterpret_cast<char*>(ap.ap.ssid),setup_ssid);ap.ap.ssid_len=strlen(setup_ssid);ap.ap.channel=6;ap.ap.max_connection=3;ap.ap.authmode=WIFI_AUTH_OPEN;
+    wifi_config_t saved={};esp_wifi_get_config(WIFI_IF_STA,&saved);bool has_credentials=saved.sta.ssid[0]!=0;
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP,&ap));
+    if(has_credentials)ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());esp_wifi_set_ps(WIFI_PS_NONE);
-    xTaskCreate(worker,"smalltv-network",8192,nullptr,3,nullptr);
+    xTaskCreate(worker,"smalltv-network",8192,has_credentials?nullptr:reinterpret_cast<void*>(1),3,nullptr);
 }

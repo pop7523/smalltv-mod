@@ -47,7 +47,7 @@ bool board_init(){
     config.pclk_hz=40000000;config.lcd_cmd_bits=8;config.lcd_param_bits=8;config.spi_mode=3;
     config.trans_queue_depth=1;config.on_color_trans_done=transferred;
     esp_lcd_panel_io_handle_t io;
-    if(esp_lcd_new_panel_io_spi(reinterpret_cast<esp_lcd_spi_bus_handle_t>(SPI2_HOST),&config,&io)!=ESP_OK)return false;
+    if(esp_lcd_new_panel_io_spi(static_cast<esp_lcd_spi_bus_handle_t>(SPI2_HOST),&config,&io)!=ESP_OK)return false;
     esp_lcd_panel_dev_config_t device={};device.reset_gpio_num=3;
     device.rgb_ele_order=LCD_RGB_ELEMENT_ORDER_RGB;device.bits_per_pixel=16;
     if(esp_lcd_new_panel_st7789(io,&device,&panel)!=ESP_OK)return false;
