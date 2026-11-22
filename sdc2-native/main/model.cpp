@@ -18,7 +18,7 @@ static void add_config(JsonDocument& d,const Settings& s){
     d["seconds"]=s.seconds;d["date"]=s.date;d["weather"]=s.weather;d["h24"]=s.h24;
     d["rotate"]=s.rotate;d["invert"]=s.invert;d["lat"]=s.lat;d["lon"]=s.lon;d["timezone"]=s.timezone;
     for(auto pair:{std::make_pair("bg",s.bg),std::make_pair("fg",s.fg),std::make_pair("accent",s.accent)}){
-        char c[8];snprintf(c,sizeof(c),"#%06lx",static_cast<unsigned long>(pair.second));d[pair.first]=c;
+        char c[8];snprintf(c,sizeof(c),"#%06lx",static_cast<unsigned long>(pair.second&0xffffff));d[pair.first]=c;
     }
 }
 std::string settings_json(const Settings& s){JsonDocument d;add_config(d,s);std::string out;serializeJson(d,out);return out;}
@@ -30,12 +30,13 @@ bool parse_settings(const std::string& body,const Settings& old,Settings& out){
     if(!integer("layout",s.layout)||!integer("brightness",s.brightness)||!integer("offset",s.offset)||
        !boolean("seconds",s.seconds)||!boolean("date",s.date)||!boolean("weather",s.weather)||
        !boolean("h24",s.h24)||!boolean("rotate",s.rotate)||!boolean("invert",s.invert))return false;
-    for(auto pair:{std::make_pair("bg",&s.bg),std::make_pair("fg",&s.fg),std::make_pair("accent",&s.accent)}){
-        if(d[pair.first].isNull())continue;
-        if(!d[pair.first].is<const char*>())return false;
-        const char* c=d[pair.first];if(strlen(c)!=7 || c[0]!='#')return false;
+    const char* keys[]={"bg","fg","accent"};uint32_t* destinations[]={&s.bg,&s.fg,&s.accent};
+    for(int index=0;index<3;index++){
+        if(d[keys[index]].isNull())continue;
+        if(!d[keys[index]].is<const char*>())return false;
+        const char* c=d[keys[index]];if(strlen(c)!=7 || c[0]!='#')return false;
         for(int i=1;i<7;i++)if(!isxdigit(static_cast<unsigned char>(c[i])))return false;
-        *pair.second=strtoul(c+1,nullptr,16);
+        *destinations[index]=strtoul(c+1,nullptr,16);
     }
     if(!d["lat"].isNull()){if(!d["lat"].is<double>())return false;s.lat=d["lat"].as<double>();}
     if(!d["lon"].isNull()){if(!d["lon"].is<double>())return false;s.lon=d["lon"].as<double>();}
@@ -50,7 +51,7 @@ bool parse_settings(const std::string& body,const Settings& old,Settings& out){
 std::string make_theme(const Settings& s,bool offline,const char* ssid){
     JsonDocument d;d["spec"]=2;auto meta=d["theme"].to<JsonObject>();meta["id"]="sdc2-native";meta["name"]="SmallTV SDC2";meta["author"]="SmallTV SDC2 port";meta["version"]="1.0.0";
     auto screen=d["display"].to<JsonObject>();screen["width"]=240;screen["height"]=240;
-    char bg[8],fg[8],acc[8];snprintf(bg,8,"#%06lx",(unsigned long)s.bg);snprintf(fg,8,"#%06lx",(unsigned long)s.fg);snprintf(acc,8,"#%06lx",(unsigned long)s.accent);screen["background"]=bg;
+    char bg[8],fg[8],acc[8];snprintf(bg,8,"#%06lx",(unsigned long)(s.bg&0xffffff));snprintf(fg,8,"#%06lx",(unsigned long)(s.fg&0xffffff));snprintf(acc,8,"#%06lx",(unsigned long)(s.accent&0xffffff));screen["background"]=bg;
     auto data=d["data"].to<JsonArray>();auto wx=data.add<JsonObject>();wx["id"]="wx";wx["url"]="http://api.open-meteo.com";wx["interval"]=600;
     auto fields=wx["fields"].to<JsonArray>();for(auto pair:{std::make_pair("temp","current.temperature_2m"),std::make_pair("hum","current.relative_humidity_2m")}){auto f=fields.add<JsonObject>();f["id"]=pair.first;f["path"]=pair.second;f["decimals"]=0;}
     auto layers=d["layers"].to<JsonArray>();
