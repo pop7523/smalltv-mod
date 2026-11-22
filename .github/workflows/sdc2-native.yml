@@ -1,0 +1,40 @@
+name: SmallTV SDC2 native OTA
+on:
+  push:
+    branches: [sdc2-native]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  firmware:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.1
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: bblanchon/ArduinoJson
+          ref: v7.4.3
+          path: .deps/ArduinoJson
+      - name: Build original SmallTV engine with native SDC2 adapters
+        shell: bash
+        working-directory: sdc2-native
+        run: |
+          . /opt/esp/idf/export.sh
+          idf.py set-target esp32c2
+          idf.py build
+          python ../tools/inspect_sdc2_image.py build/smalltv_sdc2.bin | tee build/image-report.json
+          cp build/smalltv_sdc2.bin build/SmallTV_SDC2_NATIVE_OTA.bin
+          sha256sum build/SmallTV_SDC2_NATIVE_OTA.bin > build/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v6
+        with:
+          name: SmallTV-SDC2-Native-OTA
+          path: |
+            sdc2-native/build/SmallTV_SDC2_NATIVE_OTA.bin
+            sdc2-native/build/SHA256SUMS.txt
+            sdc2-native/build/image-report.json
+      - uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: SmallTV-SDC2-native-diagnostics
+          path: sdc2-native/build/log/
