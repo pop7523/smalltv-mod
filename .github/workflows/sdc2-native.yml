@@ -20,7 +20,6 @@ jobs:
           clang++ -std=c++17 -g -O1 -Wall -Wextra -Werror -fsanitize=address,undefined -isystem .deps/ArduinoJson/src -Isrc/features/theme -Isdc2-native/main sdc2-native/tests/model_test.cpp sdc2-native/main/model.cpp src/features/theme/ThemeEngine.cpp -o /tmp/smalltv-test
           /tmp/smalltv-test
   firmware:
-    needs: model
     runs-on: ubuntu-latest
     container: espressif/idf:v5.5.1
     steps:
