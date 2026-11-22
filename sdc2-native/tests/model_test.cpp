@@ -5,6 +5,7 @@
 #include <cstring>
 #include <algorithm>
 #include <vector>
+#include <cmath>
 struct Assets:smalltv::Assets{
     smalltv::AssetHandle resolve(const std::string&)override{return smalltv::InvalidAsset;}
     bool row(smalltv::AssetHandle,int,int,int,uint16_t*,uint8_t*)override{return false;}
@@ -19,8 +20,8 @@ int main(){
     Settings s,next;assert(valid_settings(s));
     for(const char* bad:{"{\"layout\":99}","{\"bg\":\"#zzzzzz\"}","{\"seconds\":1}","{\"lat\":999}","[]"})assert(!parse_settings(bad,s,next));
     assert(parse_settings("{\"bg\":\"#ffffff\",\"lat\":35.1234,\"seconds\":false}",s,next));
-    assert(next.bg==0xffffff&&!next.seconds&&next.lat==35.1234);
-    Settings roundtrip;assert(parse_settings(settings_json(next),s,roundtrip));assert(roundtrip.bg==next.bg&&roundtrip.lat==next.lat);
+    assert(next.bg==0xffffff&&!next.seconds&&std::abs(next.lat-35.1234)<0.000001);
+    Settings roundtrip;assert(parse_settings(settings_json(next),s,roundtrip));assert(roundtrip.bg==next.bg&&std::abs(roundtrip.lat-next.lat)<0.000001);
     tm time={};time.tm_year=126;time.tm_mon=10;time.tm_mday=22;time.tm_hour=23;time.tm_min=59;time.tm_sec=58;time.tm_wday=0;
     unsigned count=0;
     for(int layout=0;layout<3;layout++)for(int offset=-16;offset<=16;offset+=16)for(int flags=0;flags<32;flags++){
